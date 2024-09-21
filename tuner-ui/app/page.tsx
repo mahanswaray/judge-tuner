@@ -28,6 +28,9 @@ export default function Home() {
   const handleAddExample = () => {
     setExampleCount(exampleCount + 1);
   }
+  const handleRemoveExample = () => {
+    setExampleCount(exampleCount - 1);
+  }
   // const handleChangeExampleInput = (id: number, input: string) => {
   //   setExamples(examples.map((example) => example.id === id ? { ...example, input } : example));
   // }
@@ -56,6 +59,7 @@ export default function Home() {
           ))
         }
         <Button onClick={handleAddExample}>+</Button>
+        <Button onClick={handleRemoveExample}>-</Button>
         <Button type="submit">submit</Button>
       </div>
       </form>
