@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import Example from "@/components/Example";
 import { useState } from "react";
+import Link from "next/link";
 
 type Example = {
   id: number;
@@ -22,6 +23,7 @@ export default function Home() {
     const formData = new FormData(e.target as HTMLFormElement);
     console.log(formData.get("system-prompt"));
     formData.forEach((value, key) => {
+      // TODO format appropriately or send to backend as form to handle
       console.log(key, value);
     });
   }
@@ -61,6 +63,11 @@ export default function Home() {
         <Button onClick={handleAddExample}>+</Button>
         <Button onClick={handleRemoveExample}>-</Button>
         <Button type="submit">submit</Button>
+        <Link href="/main">
+        <div className="border-2 border-red-500 w-24">
+        temp link
+        </div>
+        </Link>
       </div>
       </form>
     </main>
