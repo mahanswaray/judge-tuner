@@ -87,7 +87,7 @@ def generate_assertions(
     assertions = asyncio.run(
         eval_forge.generate_all_assertions(criteria, formatted_data)
     )
-    return {k:AssertionWrapper(assertion=v[0]) for k,v in assertions.criterion_to_assertions.items()}
+    return {k.criterion:AssertionWrapper(assertion=v[0]) for k,v in assertions.criterion_to_assertions.items()}
 
 @weave.op()
 def parse_setup(setup_config: EvaluationSuiteSetupConfig) -> EvaluationSuite:
