@@ -3,7 +3,7 @@ from typing import Dict, List
 from pydantic import BaseModel, Field
 
 from src.evalforge.criterion_assertion_map import CriterionAssertionMap
-from src.evaluation_suite import Testcase
+from src.evaluation_suite import AssertionWrapper, Testcase
 from src.evalforge.instructor_models import Criterion
 from src.evaluation_suite import (
     DataGenerationScenarios,
@@ -11,6 +11,7 @@ from src.evaluation_suite import (
 )
 from src.evaluation_suite import EvaluationSuiteSetupConfig, SetupExample
 from src.evalforge.evalforge import EvalForge
+import weave
 
 PARSED_SETUP_SYSTEM_PROMPT = """You are a extremely intelligent member of a data annotation team tasked with completing the setup of an evaluation suite.
 You are provided with a setup of an evaluation suite and you need to output a ParsedSetup object.
@@ -32,7 +33,7 @@ HERE IS THE SETUP DATA :
 {system_prompt}
 {examples}
 """
-from src.evalforge.llm_utils import client
+from src.llm_utils import instructor_client
 
 
 class ParsedSetup(BaseModel):
@@ -75,9 +76,8 @@ def create_parsed_setup_messages(
 
 def generate_assertions(
     parsed_setup: ParsedSetup, examples: List[SetupExample]
-) -> CriterionAssertionMap:
+) -> Dict[str, AssertionWrapper]:
     eval_forge = EvalForge()
-    assertions = {}
 
     criteria: List[Criterion] = parsed_setup.evaluation_criteria
     formatted_data = "\n\n".join(
@@ -87,12 +87,12 @@ def generate_assertions(
     assertions = asyncio.run(
         eval_forge.generate_all_assertions(criteria, formatted_data)
     )
-    return assertions
+    return {k:AssertionWrapper(assertion=v[0]) for k,v in assertions.criterion_to_assertions.items()}
 
-
+@weave.op()
 def parse_setup(setup_config: EvaluationSuiteSetupConfig) -> EvaluationSuite:
     parsed_setup = asyncio.run(
-        client.chat.completions.create(  # type: ignore
+        instructor_client.chat.completions.create(  # type: ignore
             model="gpt-4o-latest",
             response_model=ParsedSetup,
             messages=create_parsed_setup_messages(setup_config),  # type: ignore
@@ -100,7 +100,7 @@ def parse_setup(setup_config: EvaluationSuiteSetupConfig) -> EvaluationSuite:
     )
 
     # Generate assertions using EvalForge
-    assertions: CriterionAssertionMap = generate_assertions(
+    assertions: Dict[str, AssertionWrapper] = generate_assertions(
         parsed_setup, setup_config.examples
     )
 

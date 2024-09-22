@@ -3,9 +3,14 @@ from typing import Any, Dict, List, Optional
 
 import openai
 import weave
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from src.evalforge.instructor_models import LLMAssertion
+from src.llm_utils import instructor_client
+
+class StructruedEval(BaseModel):
+    think_about_the_evaluation: str = Field(description="This is a place for you to think about the evaluation. You should consider the input and the output provided to you, specifically evaluate the criteria defined after the task description. The task task description is for context but the main goal is to evaluate the specific criteria in isolation.")
+    evaluation: str = Field(description="Respond with either 'PASS' if the output meets the specific assertion criteria specified in the context of the input with a fundamental knowledge of the task, or 'FAIL' if it does not.")
 
 
 class LLMAssertionScorer(weave.Scorer):
@@ -46,7 +51,6 @@ Respond with either 'PASS' if the output meets the assertion criteria in the con
             return {"error": "No model output provided"}
 
         # Initialize OpenAI client
-        client = openai.AsyncOpenAI()
 
         async def process_assertion(assertion):
             prompt = self.prompt_template.format(
@@ -56,15 +60,16 @@ Respond with either 'PASS' if the output meets the assertion criteria in the con
                 assertion_text=assertion.text,
             )
 
-            response = await client.chat.completions.create(
+            response = await instructor_client.chat.completions.create(
                 model=self.model,
+                response_model=StructruedEval,
                 messages=[
                     {"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": prompt},
                 ],
             )
-
-            result = response.choices[0].message.content.strip()
+            result_reasoning = response.think_about_the_evaluation.strip()
+            result = response.evaluation.strip()
 
             # Map the LLM response to a score and standardize the result
             if result == "PASS":
@@ -81,6 +86,7 @@ Respond with either 'PASS' if the output meets the assertion criteria in the con
                 "score": score,
                 "result": result,
                 "type": "llm",
+                "reasoning": result_reasoning,
             }
 
         # Create tasks for all assertions
