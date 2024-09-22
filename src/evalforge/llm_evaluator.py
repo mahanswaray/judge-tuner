@@ -8,9 +8,14 @@ from pydantic import BaseModel, Field
 from src.evalforge.instructor_models import LLMAssertion
 from src.llm_utils import instructor_client
 
+
 class StructruedEval(BaseModel):
-    think_about_the_evaluation: str = Field(description="This is a place for you to think about the evaluation. You should consider the input and the output provided to you, specifically evaluate the criteria defined after the task description. The task task description is for context but the main goal is to evaluate the specific criteria in isolation.")
-    evaluation: str = Field(description="Respond with either 'PASS' if the output meets the specific assertion criteria specified in the context of the input with a fundamental knowledge of the task, or 'FAIL' if it does not.")
+    think_about_the_evaluation: str = Field(
+        description="This is a place for you to think about the evaluation. You should consider the input and the output provided to you, specifically evaluate the criteria defined after the task description. The task task description is for context but the main goal is to evaluate the specific criteria in isolation."
+    )
+    evaluation: str = Field(
+        description="Respond with either 'PASS' if the output meets the specific assertion criteria specified in the context of the input with a fundamental knowledge of the task, or 'FAIL' if it does not."
+    )
 
 
 class LLMAssertionScorer(weave.Scorer):

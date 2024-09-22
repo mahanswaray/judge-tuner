@@ -4,17 +4,20 @@ from src.evaluation_suite import DataGenerationScenarios
 from src.evaluation_suite import EvaluationSuite, SetupExample
 from src.llm_utils import instructor_client
 
+
 class GeneratedExample(BaseModel):
     input: str = Field(..., description="The input for the generated example")
     output: str = Field(..., description="The output for the generated example")
 
+
 class GeneratedExamples(BaseModel):
-    examples: List[GeneratedExample] = Field(..., description="List of generated examples")
+    examples: List[GeneratedExample] = Field(
+        ..., description="List of generated examples"
+    )
+
 
 async def generate_new_examples(
-    evaluation_suite: EvaluationSuite,
-    num_examples: int,
-    note: Optional[str] = None
+    evaluation_suite: EvaluationSuite, num_examples: int, note: Optional[str] = None
 ) -> List[SetupExample]:
     prompt = f"""
     Task: Generate {num_examples} new example(s) for the following evaluation suite.
@@ -40,16 +43,28 @@ async def generate_new_examples(
         model="gpt-4o-latest",
         response_model=GeneratedExamples,
         messages=[
-            {"role": "system", "content": "You are an AI assistant tasked with generating new examples for an evaluation suite."},
+            {
+                "role": "system",
+                "content": "You are an AI assistant tasked with generating new examples for an evaluation suite.",
+            },
             {"role": "user", "content": prompt},
         ],
     )
 
-    return [SetupExample(input=example.input, output=example.output) for example in response.examples]
+    return [
+        SetupExample(input=example.input, output=example.output)
+        for example in response.examples
+    ]
+
 
 def format_examples(examples: List[SetupExample]) -> str:
     return "\n".join([f"Input: {ex.input}\nOutput: {ex.output}\n" for ex in examples])
 
 
 def format_scenarios(scenarios: List[DataGenerationScenarios]) -> str:
-    return "\n".join([f"- {scenario.scenarios_based_on}:\n  {', '.join(scenario.scenarios)}" for scenario in scenarios])
+    return "\n".join(
+        [
+            f"- {scenario.scenarios_based_on}:\n  {', '.join(scenario.scenarios)}"
+            for scenario in scenarios
+        ]
+    )
