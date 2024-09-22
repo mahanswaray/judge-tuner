@@ -76,9 +76,8 @@ def create_parsed_setup_messages(
 
 def generate_assertions(
     parsed_setup: ParsedSetup, examples: List[SetupExample]
-) -> CriterionAssertionMap:
+) -> Dict[str, AssertionWrapper]:
     eval_forge = EvalForge()
-    assertions = {}
 
     criteria: List[Criterion] = parsed_setup.evaluation_criteria
     formatted_data = "\n\n".join(
@@ -88,7 +87,7 @@ def generate_assertions(
     assertions = asyncio.run(
         eval_forge.generate_all_assertions(criteria, formatted_data)
     )
-    return assertions
+    return {k:AssertionWrapper(assertion=v[0]) for k,v in assertions.criterion_to_assertions.items()}
 
 @weave.op()
 def parse_setup(setup_config: EvaluationSuiteSetupConfig) -> EvaluationSuite:
@@ -101,7 +100,7 @@ def parse_setup(setup_config: EvaluationSuiteSetupConfig) -> EvaluationSuite:
     )
 
     # Generate assertions using EvalForge
-    assertions: CriterionAssertionMap = generate_assertions(
+    assertions: Dict[str, AssertionWrapper] = generate_assertions(
         parsed_setup, setup_config.examples
     )
 
@@ -115,7 +114,7 @@ def parse_setup(setup_config: EvaluationSuiteSetupConfig) -> EvaluationSuite:
         ],
         evaluation_criteria=parsed_setup.evaluation_criteria,
         data_generation_scenarios=parsed_setup.data_generation_scenarios,
-        assertions={k:AssertionWrapper(assertion=v) for k,v in assertions.criterion_to_assertions.items()},
+        assertions=assertions,
     )
 
     return evaluation_suite
