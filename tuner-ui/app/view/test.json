@@ -1,0 +1,20 @@
+{
+  "suite_description": "Suite Description",
+  "evaluation_criteria": [
+    {
+      "criterion": "something",
+      "explaination": "something",
+      "evaluation_method": "code"
+    }
+  ],
+  "data_generation_criteria": [
+    {
+      "scenarios_based_on": "something",
+      "scenarios": [
+        "a",
+        "b",
+        "c"
+      ]
+    }
+  ]
+}
