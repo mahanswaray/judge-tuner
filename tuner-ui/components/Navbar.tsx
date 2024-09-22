@@ -35,8 +35,15 @@ export default function Navbar() {
               </NavigationMenuLink>
             </Link>
           </NavigationMenuItem>
+          <NavigationMenuItem>
+            <Link href="/add" legacyBehavior passHref>
+              <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                Add
+              </NavigationMenuLink>
+            </Link>
+          </NavigationMenuItem>
         </div>
-        <NavigationMenuItem className="pl-[80vw]">
+        <NavigationMenuItem className="pl-[70vw]">
           <NavigationMenuLink>
             <Button className="bg-black hover:bg-gray-800">
               <div className="flex gap-2 items-center">
