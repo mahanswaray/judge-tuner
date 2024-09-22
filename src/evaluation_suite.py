@@ -1,5 +1,8 @@
 from pydantic import BaseModel, Field
-from typing import List, Literal
+from typing import List, Literal, Dict, Optional, Union
+
+from src.evalforge.criterion_assertion_map import CriterionAssertionMap
+from src.evalforge.instructor_models import Criterion
 
 
 class SetupExample(BaseModel):
@@ -10,22 +13,6 @@ class SetupExample(BaseModel):
 class EvaluationSuiteSetupConfig(BaseModel):
     system_prompt: str
     examples: List[SetupExample]
-    testcase_scenarios: str
-
-
-class EvaluationCriteria(BaseModel):
-    criterion: str = Field(
-        ...,
-        description="A concise, specific statement describing a single aspect of evaluation",
-    )
-    explaination: str = Field(
-        "",
-        description="A detailed explanation of the criterion's importance and potential evaluation methods",
-    )
-    evaluation_method: Literal["code", "llm"] = Field(
-        "",
-        description="The primary method for evaluating this criterion: 'code' for programmatic checks, 'llm' for language model-based assessment",
-    )
 
 
 class DataGenerationScenarios(BaseModel):
@@ -39,9 +26,8 @@ class DataGenerationScenarios(BaseModel):
 class Testcase(BaseModel):
     input: str
     output: str
-    ground_truth: str
-    description: str
-    purpose: str
+    description: Optional[str] = None
+    purpose: Optional[str] = None
 
 
 class EvaluationSuite(BaseModel):
@@ -49,5 +35,6 @@ class EvaluationSuite(BaseModel):
     setup: EvaluationSuiteSetupConfig
     suite_description: str
     verified_testcases: List[Testcase]
-    evaluation_criteria: List[EvaluationCriteria]
-    data_generation_scenarios: List[str]
+    evaluation_criteria: List[Criterion]
+    data_generation_scenarios: List[DataGenerationScenarios]
+    assertions: CriterionAssertionMap

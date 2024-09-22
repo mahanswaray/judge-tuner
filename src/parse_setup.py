@@ -1,11 +1,16 @@
-import os
+import asyncio
 from typing import Dict, List
-import instructor
-import openai
 from pydantic import BaseModel, Field
 
-from src.evaluation_suite import DataGenerationScenarios, EvaluationCriteria
-from src.evaluation_suite_setup import EvaluationSuiteSetupConfig
+from src.evalforge.criterion_assertion_map import CriterionAssertionMap
+from src.evaluation_suite import Testcase
+from src.evalforge.instructor_models import Criterion
+from src.evaluation_suite import (
+    DataGenerationScenarios,
+    EvaluationSuite,
+)
+from src.evaluation_suite import EvaluationSuiteSetupConfig, SetupExample
+from src.evalforge.evalforge import EvalForge
 
 PARSED_SETUP_SYSTEM_PROMPT = """You are a extremely intelligent member of a data annotation team tasked with completing the setup of an evaluation suite.
 You are provided with a setup of an evaluation suite and you need to output a ParsedSetup object.
@@ -16,12 +21,18 @@ You will be given the following :
 You need to output 
 1. A detailed description of the task the user wants to evaluate on, summary of the requirements defined by the system prompt.
 2. A list of evaluation criteria for the task.
+    1.1. Focus on general aspects of quality that can be used across multiple outputs.
+    1.2. Consider criteria that address potential misalignment between LLM outputs and human preferences.
+    1.3. Include criteria that can be evaluated both by code and by LLM-based evaluators.
+    1.4. Think about criteria that might reveal hallucinations, instruction-following, or other common LLM issues.
+    1.5. Generate criteria that could help in debugging or improving the LLM pipeline.
 3. A list of distinct input scenarios or categories that the task is expected to handle. This helps in generating diverse and representative test cases.
 
 HERE IS THE SETUP DATA : 
 {system_prompt}
 {examples}
 """
+from src.evalforge.llm_utils import client
 
 
 class ParsedSetup(BaseModel):
@@ -29,21 +40,13 @@ class ParsedSetup(BaseModel):
         ...,
         description="Detailed description of the task the user wants to evaluate on, summary of the requirements defined by the system prompt.",
     )
-    evaluation_criteria: List[EvaluationCriteria] = Field(
+    evaluation_criteria: List[Criterion] = Field(
         ..., description="List of evaluation criteria for the task."
     )
     data_generation_scenarios: List[DataGenerationScenarios] = Field(
         ...,
         description="List of distinct input scenarios or categories that the task is expected to handle. This helps in generating diverse and representative test cases.",
     )
-
-
-openai_client = instructor.from_openai(
-    openai.OpenAI(
-        api_key=os.getenv("OPENROUTER_API_KEY"),
-        base_url=os.getenv("OPENROUTER_BASE_URL"),
-    )
-)
 
 
 def create_parsed_setup_messages(
@@ -70,37 +73,48 @@ def create_parsed_setup_messages(
     return messages
 
 
-def parse_setup(setup: EvaluationSuiteSetupConfig) -> ParsedSetup:
-    messages = create_parsed_setup_messages(setup)
-    parsed_setup = openai_client.chat.completions.create(
-        model="gpt-4o-latest",
-        response_model=ParsedSetup,
-        messages=messages,
+def generate_assertions(
+    parsed_setup: ParsedSetup, examples: List[SetupExample]
+) -> CriterionAssertionMap:
+    eval_forge = EvalForge()
+    assertions = {}
+
+    criteria: List[Criterion] = parsed_setup.evaluation_criteria
+    formatted_data = "\n\n".join(
+        [f"Task and Evaluation Description: {parsed_setup.suite_description}"]
+        + [f"Input: {example.input} \nOutput: {example.output}" for example in examples]
     )
-    return parsed_setup
+    assertions = asyncio.run(
+        eval_forge.generate_all_assertions(criteria, formatted_data)
+    )
+    return assertions
 
 
-if __name__ == "__main__":
-    from models.evaluation_suite_setup import SetupExample
+def parse_setup(setup_config: EvaluationSuiteSetupConfig) -> EvaluationSuite:
+    parsed_setup = asyncio.run(
+        client.chat.completions.create(  # type: ignore
+            model="gpt-4o-latest",
+            response_model=ParsedSetup,
+            messages=create_parsed_setup_messages(setup_config),  # type: ignore
+        )
+    )
 
-    example_setup = EvaluationSuiteSetupConfig(
-        system_prompt="""You are a customer support agent tasked with writing the first response to a user filing a support issue. Follow these guidelines:
+    # Generate assertions using EvalForge
+    assertions: CriterionAssertionMap = generate_assertions(
+        parsed_setup, setup_config.examples
+    )
 
-    For content, begin with a warm greeting and thank the user for reaching out and acknowledge the issue they've reported.
-
-    For format, limit the response to 1 short paragraph.
-
-    For tone, maintain a professional yet friendly tone throughout.
-
-    Use the user's name if provided in their inquiry.
-
-    For additional rules, do not provide specific solutions in this first response.
-    Always end with an open-ended question to encourage further dialogue.
-    """,
-        examples=[
-            SetupExample(
-                input="My shipment is delayed and I need it urgently.",
-                output="Hello [User], Thank you for contacting our support team regarding your delayed shipment. I understand that this delay is causing you concern, especially given the urgency of your need. I sincerely apologize for any inconvenience this may be causing you. I want to assure you that I'm here to help and will do my best to address this situation as quickly as possible. Your satisfaction is important to us, and we take shipping delays very seriously. To better assist you, could you please provide me with your order number and the expected delivery date that was originally given to you? This information will help me investigate the status of your shipment more effectively.",
-            ),
+    # Create EvaluationSuite object
+    evaluation_suite = EvaluationSuite(
+        setup=setup_config,
+        suite_description=parsed_setup.suite_description,
+        verified_testcases=[
+            Testcase(input=example.input, output=example.output)
+            for example in setup_config.examples
         ],
+        evaluation_criteria=parsed_setup.evaluation_criteria,
+        data_generation_scenarios=parsed_setup.data_generation_scenarios,
+        assertions=assertions,
     )
+
+    return evaluation_suite
