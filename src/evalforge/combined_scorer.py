@@ -23,7 +23,6 @@ import weave
 
 from src.evalforge.criterion_assertion_map import CriterionAssertionMap
 
-
 class AssertionScorer(weave.Scorer):
     criterion_assertion_map: CriterionAssertionMap = Field(
         default_factory=CriterionAssertionMap

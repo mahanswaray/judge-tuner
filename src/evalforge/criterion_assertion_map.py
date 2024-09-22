@@ -10,9 +10,9 @@ class CriterionAssertionMap(weave.Object):
     assertion_to_criterion: Dict[str, str] = {}
 
     def add_assertion(
-        self, criterion: Criterion, assertion: Union[LLMAssertion, PythonAssertion]
+        self, criterion: str, assertion: Union[LLMAssertion, PythonAssertion]
     ):
-        criterion_name = criterion.criterion
+        criterion_name = criterion
         if criterion_name not in self.criterion_to_assertions:
             self.criterion_to_assertions[criterion_name] = []
         self.criterion_to_assertions[criterion_name].append(assertion)

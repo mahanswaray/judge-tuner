@@ -23,7 +23,7 @@ from src.evalforge.instructor_models import (
     TaskDescription,
 )
 
-from src.evalforge.llm_utils import client
+from src.llm_utils import instructor_client
 
 DataPoint = Tuple[
     dict, dict, Literal[0, 1], Optional[str], Optional[str], Optional[str]
@@ -267,7 +267,7 @@ You are an AI assistant designed to create testable assertions for a given task 
                 note=note,
             )
 
-            response = await client.chat.completions.create(
+            response = await instructor_client.chat.completions.create(
                 model=self.MODEL,
                 messages=[
                     {"role": "system", "content": self.task_system_prompt},
@@ -304,7 +304,7 @@ You are an AI assistant designed to create testable assertions for a given task 
             llm_description=llm_description, human_context=human_context
         )
 
-        response = await client.chat.completions.create(
+        response = await instructor_client.chat.completions.create(
             model=self.MODEL,
             messages=[
                 {"role": "system", "content": self.combined_task_system_prompt},
@@ -323,7 +323,7 @@ You are an AI assistant designed to create testable assertions for a given task 
             formatted_data=formatted_data,
             generated_criteria=str([c.model_dump() for c in all_criteria]),
         )
-        response = await client.chat.completions.create(
+        response = await instructor_client.chat.completions.create(
             model=self.MODEL,
             messages=[
                 {"role": "system", "content": self.criteria_system_prompt},
@@ -354,7 +354,7 @@ You are an AI assistant designed to create testable assertions for a given task 
             formatted_data_string=formatted_data_string,
             criterion=criterion.model_dump(),
         )
-        response = await client.chat.completions.create(
+        response = await instructor_client.chat.completions.create(
             model=self.MODEL,
             messages=[
                 {"role": "system", "content": self.candidate_assertion_system_prompt},
